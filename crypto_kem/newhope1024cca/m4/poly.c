@@ -252,33 +252,6 @@ void poly_uniform(poly *a, const unsigned char *seed)
   }
 }
 
-/*************************************************
-* Name:        hw
-* 
-* Description: Compute the Hamming weight of a byte
-*
-* Arguments:   - unsigned char a: input byte
-**************************************************/
-//static unsigned char hw(unsigned char a)
-//{
-//  unsigned char i, r = 0;
-//  for(i=0;i<8;i++)
-//    r += (a >> i) & 1;
-//  return r;
-//}
-
-/*************************************************
-* Name:        poly_sample
-* 
-* Description: Sample a polynomial deterministically from a seed and a nonce,
-*              with output polynomial close to centered binomial distribution
-*              with parameter k=8
-*
-* Arguments:   - poly *r:                   pointer to output polynomial
-*              - const unsigned char *seed: pointer to input seed 
-*              - unsigned char nonce:       one-byte input nonce
-**************************************************/
-
 
 
 
@@ -325,6 +298,21 @@ void poly_sample_inner_c(unsigned char *buf, poly *r, unsigned char *extseed)
 */
 
 extern void poly_sample_inner(unsigned char *buf, poly *r, unsigned char *extseed);
+
+
+
+/*************************************************
+* Name:        poly_sample
+* 
+* Description: Sample a polynomial deterministically from a seed and a nonce,
+*              with output polynomial close to centered binomial distribution
+*              with parameter k=8
+*
+* Arguments:   - poly *r:                   pointer to output polynomial
+*              - const unsigned char *seed: pointer to input seed 
+*              - unsigned char nonce:       one-byte input nonce
+**************************************************/
+
 void poly_sample(poly *r, const unsigned char *seed, unsigned char nonce)
 {
 #if NEWHOPE_K != 8
@@ -338,8 +326,7 @@ void poly_sample(poly *r, const unsigned char *seed, unsigned char nonce)
   for(i=0;i<NEWHOPE_SYMBYTES;i++)
     extseed[i] = seed[i];
   extseed[NEWHOPE_SYMBYTES] = nonce;
-  poly_sample_inner(buf, r, extseed);
-  
+  poly_sample_inner(buf, r, extseed);  
 }
 
 /*************************************************
