@@ -46,7 +46,7 @@ montgomery \a1,\q,\t,\qinv
  * r14		: q=12289
  **/
 ntt:
-push {r4-r12,lr}
+push {r4-r11,lr}
 // q=12289
 mov r14,#3
 lsl r14,#12
@@ -72,13 +72,13 @@ ldrh r5,[r0],#2
 ldrh r6,[r0],#2
 
 // level 1
-ldrh r11,[r1]
+ldrh r11,[r1],#2
 butterfly_without_barrett r3,r4,r11,r14,r12,r7,r8
-ldrh r11,[r1,#2]
+ldrh r11,[r1],#2
 butterfly_without_barrett r5,r6,r11,r14,r12,r7,r8
 
 // level 2
-ldrh r11,[r9]
+ldrh r11,[r9],#2
 butterfly_with_barrett r3,r5,r11,r14,r12,r7,r8
 butterfly_with_barrett r4,r6,r11,r14,r12,r7,r8
 
@@ -88,11 +88,7 @@ strh r4,[r0,#-6]
 strh r5,[r0,#-4]
 strh r6,[r0,#-2]
 
-add r1,#4
-add r9,#2
-
-sub r2,#1
-cmp r2,#0
+subs r2,#1
 bne level1to2
 
 pop {r0,r1}
@@ -117,7 +113,7 @@ butterfly_without_barrett r5,r6,r11,r14,r12,r7,r8
 
 // level 4
 // Optimisation: twiddle remains in r9 
-ldrh r9,[r10] 
+ldrh r9,[r10],#2 
 butterfly_with_barrett r3,r5,r9,r14,r12,r7,r8
 butterfly_with_barrett r4,r6,r9,r14,r12,r7,r8
 
@@ -200,7 +196,6 @@ strh r3,[r0], #26
 // change r1 back to original address of omegas
 sub r1,r1,r2, LSL#2
 
-add r10,#2
 
 add r2,#1
 cmp r2,#64
@@ -217,7 +212,7 @@ mov r10, #0
 level5to6: 
 
 // inner loop counter
-mov r2, #0 
+mov r2, #16 
 sub r11, r1, r10
 ldrh r9,[r11]  
 level5to6inner: 
@@ -246,8 +241,7 @@ strh r5,[r0,#64]
 strh r6,[r0,#96]
 strh r3,[r0],#2
 
-add r2, #2
-cmp r2, #32
+subs r2, #1
 bne level5to6inner
 
 add r1, #4
@@ -258,8 +252,8 @@ bne level5to6
 
 pop {r0,r1}      
 push {r0,r1}
-// set the loop counter to zero (zero because I am using it in address calculation of omegas)
-mov r2,#0
+
+mov r2,#64
 
 // 7., 8, 9. layers merged and unrolled to merge with 10. layer
 // first half calculate 7., 8., 9. layers with a[0:512]
@@ -324,14 +318,12 @@ strh r5,[r0,#384]
 strh r12,[r0,#256]
 strh r4,[r0,#128]
 strh r3,[r0],#2
-add r2,#2
-cmp r2,#128
+subs r2,#1
 bne firsthalf
 
 pop {r0,r1}
 add r0,#1024
-mov r2,#0
-
+mov r2,#64
 // second half of 7., 8. and 9. layers 
 // it calculates second half of output of 9. layer
 // And load first half value and calculate 10. layer
@@ -386,7 +378,6 @@ sub r0,#1024
 // address of omegas won't be used after this point
 // so we can use r1 as a 3q 
 push {r1,r2}
-// optimisation: using registers to store butterfly, barrett, and montgomery constants
 push {r3}
 movt r3, #53247
 
@@ -476,10 +467,9 @@ strh r3,[r0],#2
 
 pop {r1,r2}
 add r0,#1024
-add r2,#2
-cmp r2,#128
+subs r2,#1
 bne lasthalf
-pop {r4-r12,pc}
+pop {r4-r11,pc}
 
 .global	mul_coefficients
 .type	mul_coefficients, %function
@@ -556,8 +546,7 @@ pkhbt r6, r10, r8
 
 stm r0!,{r3,r4,r5,r6}
 
-sub r2,#1
-cmp r2,#0
+subs r2,#1
 bne looptop
 
 pop {r4-r12,pc}	
@@ -709,8 +698,7 @@ pkhbt r6, r10, r8
 pop {r10}
 stm r0!,{r3,r4,r5,r6}
 
-sub r10,#1
-cmp r10,#0
+subs r10,#1
 bne looptopp
 
 pop {r0-r12,pc}	
