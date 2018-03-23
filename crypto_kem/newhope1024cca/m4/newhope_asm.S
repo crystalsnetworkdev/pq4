@@ -716,3 +716,95 @@ bne looptopp
 pop {r0-r12,pc}	
 
 
+
+.macro sample_coeff r, bufv, q, const, tmp1, tmp2, tmp3, tmp4
+
+  and \tmp2, \const, \bufv
+  v = 1
+  .rept 7
+    and \tmp3, \const, \bufv, LSR#v
+    add \tmp2, \tmp3
+    v=v+1
+  .endr
+  // tmp2 = (\tmp1>>k) & 0x01010101 
+
+  // a + Q - b
+  ubfx \tmp1, \tmp2, #0, #8
+  ubfx \tmp3, \tmp2, #8, #8 
+  add \tmp1, \q 
+  sub \tmp1, \tmp3 
+  strh \tmp1, [\r], #2
+
+  // c + Q - d
+  ubfx \tmp1, \tmp2, #16, #8
+  add \tmp1, \q
+  sub \tmp1, \tmp1, \tmp2, LSR#24
+  
+  strh \tmp1, [\r], #2
+.endm
+
+//poly_sample_inner2(buf, r, extseed);
+.global	poly_sample_inner
+.type	poly_sample_inner, %function
+.align 4
+.syntax unified
+.cpu cortex-m4
+poly_sample_inner: 
+  push {r4-r12,lr}
+  // write arguments for shake on the stack 
+  sub	sp, #16
+  movs	r4, #34
+  movs	r5, #0
+  strd	r4, r5, [sp, #8]
+  str	  r2, [sp]
+
+  // save the arguments 
+  // buf 
+  mov r4, r0 
+  // poly 
+  mov r5, r1
+  // seed 
+  mov r6, r2 
+
+  // q=12289
+  mov r10,#3
+  lsl r10,#12
+  add r10,#1
+
+  mov  r11, #0x01010101
+
+  // i
+  movs	r7, #0
+  
+  poly_sample_outer_loop: 
+    // extseed[NEWHOPE_SYMBYTES+1] = i;
+    strb r7, [r6, #33]
+
+    // shake256(buf,128,extseed,NEWHOPE_SYMBYTES+2);
+    movs	r2, #128	
+ 	  movs	r3, #0
+ 	  mov	r0, r4
+ 	  bl shake256
+    
+    // j 
+    mov r8, #8
+    poly_sample_inner_loop:
+    
+      ldr r0, [r4], #4
+      ldr r1, [r4], #4
+      ldr r2, [r4], #4
+      ldr r3, [r4], #4
+  
+      sample_coeff r5, r0, r10, r11, r9, r12, r14
+      sample_coeff r5, r1, r10, r11, r9, r12, r14
+      sample_coeff r5, r2, r10, r11, r9, r12, r14
+      sample_coeff r5, r3, r10, r11, r9, r12, r14
+      subs r8, #1 // j
+      bne poly_sample_inner_loop
+    sub r4, #128 // reset buf 
+
+    add r7, #1 //i
+    cmp r7, #16
+    bne poly_sample_outer_loop
+  add sp, #16
+  pop {r4-r12, pc}

@@ -259,13 +259,13 @@ void poly_uniform(poly *a, const unsigned char *seed)
 *
 * Arguments:   - unsigned char a: input byte
 **************************************************/
-static unsigned char hw(unsigned char a)
-{
-  unsigned char i, r = 0;
-  for(i=0;i<8;i++)
-    r += (a >> i) & 1;
-  return r;
-}
+//static unsigned char hw(unsigned char a)
+//{
+//  unsigned char i, r = 0;
+//  for(i=0;i<8;i++)
+//    r += (a >> i) & 1;
+//  return r;
+//}
 
 /*************************************************
 * Name:        poly_sample
@@ -278,31 +278,37 @@ static unsigned char hw(unsigned char a)
 *              - const unsigned char *seed: pointer to input seed 
 *              - unsigned char nonce:       one-byte input nonce
 **************************************************/
-void poly_sample(poly *r, const unsigned char *seed, unsigned char nonce)
-{
-#if NEWHOPE_K != 8
-#error "poly_sample in poly.c only supports k=8"
-#endif
-  unsigned char buf[128], a, b;
-//  uint32_t t, d, a, b, c;
+
+
+
+
+
+
+/*
+void poly_sample_inner_c_slow(unsigned char *buf, poly *r, unsigned char *extseed){
   int i,j;
-
-  unsigned char extseed[NEWHOPE_SYMBYTES+2];
-
-  for(i=0;i<NEWHOPE_SYMBYTES;i++)
-    extseed[i] = seed[i];
-  extseed[NEWHOPE_SYMBYTES] = nonce;
-
-  for(i=0;i<NEWHOPE_N/64;i++) /* Generate noise in blocks of 64 coefficients */
+  uint32_t a,b;
+  for(i=0;i<NEWHOPE_N/64;i++) // Generate noise in blocks of 64 coefficients 
   {
     extseed[NEWHOPE_SYMBYTES+1] = i;
     shake256(buf,128,extseed,NEWHOPE_SYMBYTES+2);
-    for(j=0;j<64;j++)
-    {
+    for(j=0;j<64;j++) {
       a = buf[2*j];
       b = buf[2*j+1];
       r->coeffs[64*i+j] = hw(a) + NEWHOPE_Q - hw(b);
-      /*
+    }
+  }
+}
+
+void poly_sample_inner_c(unsigned char *buf, poly *r, unsigned char *extseed)
+{
+  int i,j;
+  for(i=0;i<NEWHOPE_N/64;i++) // Generate noise in blocks of 64 coefficients 
+  {
+    extseed[NEWHOPE_SYMBYTES+1] = i;
+    shake256(buf,128,extseed,NEWHOPE_SYMBYTES+2);
+    for(j=0;j<128;j+=4) {
+      uint32_t t, d, a, b, c, k;
       t = buf[j] | ((uint32_t)buf[j+1] << 8) | ((uint32_t)buf[j+2] << 16) | ((uint32_t)buf[j+3] << 24);
       d = 0;
       for(k=0;k<8;k++)
@@ -312,10 +318,28 @@ void poly_sample(poly *r, const unsigned char *seed, unsigned char nonce)
       c = ((d >> 16) & 0xff);
       d >>= 24;
       r->coeffs[64*i+j/2]   = a + NEWHOPE_Q - b;
-      r->coeffs[64*i+j/2+1] = c + NEWHOPE_Q - d;
-      */
-    }
+      r->coeffs[64*i+j/2+1] = c + NEWHOPE_Q - d;  
   }
+  }
+}
+*/
+
+extern void poly_sample_inner(unsigned char *buf, poly *r, unsigned char *extseed);
+void poly_sample(poly *r, const unsigned char *seed, unsigned char nonce)
+{
+#if NEWHOPE_K != 8
+#error "poly_sample in poly.c only supports k=8"
+#endif
+  unsigned char buf[128];
+  int i;
+
+  unsigned char extseed[NEWHOPE_SYMBYTES+2];
+
+  for(i=0;i<NEWHOPE_SYMBYTES;i++)
+    extseed[i] = seed[i];
+  extseed[NEWHOPE_SYMBYTES] = nonce;
+  poly_sample_inner(buf, r, extseed);
+  
 }
 
 /*************************************************
